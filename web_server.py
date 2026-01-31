@@ -66,8 +66,9 @@ def run_telegram_bot():
         asyncio.set_event_loop(loop)
         
         bot_status["telegram"] = "running"
-        from telegram_bot import main as telegram_main
-        telegram_main()
+        from telegram_bot import TelegramSubscriptionBot
+        bot = TelegramSubscriptionBot()
+        bot.run(use_signals=False)  # Disable signals for threaded mode
     except Exception as e:
         bot_status["telegram"] = f"error: {str(e)}"
         print(f"❌ Telegram bot xatosi: {e}")

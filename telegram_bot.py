@@ -87,7 +87,7 @@ class TelegramSubscriptionBot:
         else:
             await query.answer("❌ Siz hali kanalga obuna bo'lmagansiz!", show_alert=True)
     
-    def run(self):
+    def run(self, use_signals=True):
         """Run the bot"""
         if not self.token or self.token == "your_telegram_bot_token":
             print("❌ TELEGRAM_BOT_TOKEN .env faylida kiritilmagan!")
@@ -105,8 +105,11 @@ class TelegramSubscriptionBot:
         app.add_handler(CommandHandler("start", self.start))
         app.add_handler(CallbackQueryHandler(self.check_subscription_callback, pattern="check_subscription"))
         
-        # Run
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
+        # Run - disable signals if in threaded mode
+        if use_signals:
+            app.run_polling(allowed_updates=Update.ALL_TYPES)
+        else:
+            app.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=None)
 
 
 def main():

@@ -1,5 +1,7 @@
 import time
 import signal
+import os
+import threading
 from datetime import datetime
 from config import config
 from gemini_ai import GeminiAI
@@ -14,9 +16,13 @@ class InstagramAIBot:
         self.instagram = InstagramHandler()
         self.ai: GeminiAI = None
         
-        # Setup graceful shutdown
-        signal.signal(signal.SIGINT, self._shutdown)
-        signal.signal(signal.SIGTERM, self._shutdown)
+        # Setup graceful shutdown (only in main thread)
+        if threading.current_thread() is threading.main_thread():
+            try:
+                signal.signal(signal.SIGINT, self._shutdown)
+                signal.signal(signal.SIGTERM, self._shutdown)
+            except ValueError:
+                pass  # Signal handlers don't work in threads
     
     def _shutdown(self, signum, frame):
         """Handle shutdown signals"""
