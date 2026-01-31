@@ -46,21 +46,39 @@ def health():
 def run_instagram_bot():
     """Run the Instagram comment bot"""
     global bot_status
+    import sys
+    
+    # Force unbuffered output
+    sys.stdout.reconfigure(line_buffering=True)
+    
     try:
-        bot_status["instagram"] = "running"
+        print("🔄 Instagram bot yuklanmoqda...", flush=True)
+        bot_status["instagram"] = "loading"
+        
         from main import main as instagram_main
+        print("✅ Instagram bot moduli yuklandi", flush=True)
+        
+        bot_status["instagram"] = "running"
         instagram_main()
     except Exception as e:
-        bot_status["instagram"] = f"error: {str(e)}"
-        print(f"❌ Instagram bot xatosi: {e}")
+        import traceback
+        error_msg = f"error: {str(e)}"
+        bot_status["instagram"] = error_msg
+        print(f"❌ Instagram bot xatosi: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
 
 
 def run_telegram_bot():
     """Run the Telegram subscription bot with its own event loop"""
     global bot_status
     import asyncio
+    import sys
+    
+    sys.stdout.reconfigure(line_buffering=True)
     
     try:
+        print("🔄 Telegram bot yuklanmoqda...", flush=True)
+        
         # Create new event loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -68,10 +86,13 @@ def run_telegram_bot():
         bot_status["telegram"] = "running"
         from telegram_bot import TelegramSubscriptionBot
         bot = TelegramSubscriptionBot()
+        print("✅ Telegram bot moduli yuklandi", flush=True)
         bot.run(use_signals=False)  # Disable signals for threaded mode
     except Exception as e:
+        import traceback
         bot_status["telegram"] = f"error: {str(e)}"
-        print(f"❌ Telegram bot xatosi: {e}")
+        print(f"❌ Telegram bot xatosi: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
 
 
 def start_bots():
