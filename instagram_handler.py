@@ -6,6 +6,14 @@ from instagrapi import Client
 from instagrapi.types import DirectThread, DirectMessage, Media, Comment
 from config import config
 
+# Try to import database module
+try:
+    from database import db
+    HAS_DB = db.enabled
+except:
+    HAS_DB = False
+    db = None
+
 
 class InstagramHandler:
     """Instagram DM and Comment handler using instagrapi"""
@@ -22,7 +30,15 @@ class InstagramHandler:
         self._load_processed_comments()
     
     def _load_processed_comments(self):
-        """Load processed comments from file"""
+        """Load processed comments from database or file"""
+        # Try database first
+        if HAS_DB and db:
+            self.processed_comments = db.get_processed_comments()
+            if self.processed_comments:
+                print(f"📥 {len(self.processed_comments)} ta processed comment DBdan yuklandi")
+                return
+        
+        # Fallback to file
         if os.path.exists(self.PROCESSED_FILE):
             try:
                 with open(self.PROCESSED_FILE, 'r') as f:
@@ -46,7 +62,21 @@ class InstagramHandler:
             True if login successful, False otherwise
         """
         try:
-            # Try to load existing session
+            # Try to load session from database first
+            if HAS_DB and db:
+                db_session = db.load_session()
+                if db_session:
+                    print("📱 Session databazadan yuklanmoqda...")
+                    try:
+                        self.client.set_settings(db_session)
+                        self.client.login(config.INSTAGRAM_USERNAME, config.INSTAGRAM_PASSWORD)
+                        self.logged_in = True
+                        print("✅ Session databazadan muvaffaqiyatli yuklandi!")
+                        return True
+                    except Exception as e:
+                        print(f"⚠️ DB sessiya yaroqsiz: {e}")
+            
+            # Try to load existing session from file
             if os.path.exists(self.SESSION_FILE):
                 print("📱 Saqlangan sessiya topildi, yuklanmoqda...")
                 try:
@@ -54,6 +84,8 @@ class InstagramHandler:
                     self.client.login(config.INSTAGRAM_USERNAME, config.INSTAGRAM_PASSWORD)
                     self.logged_in = True
                     print("✅ Sessiya muvaffaqiyatli yuklandi!")
+                    # Save to DB for cloud use
+                    self._save_session_to_db()
                     return True
                 except Exception as e:
                     print(f"⚠️ Sessiya yaroqsiz, qaytadan kirish... ({e})")
@@ -65,6 +97,7 @@ class InstagramHandler:
             
             # Save session for future use
             self.client.dump_settings(self.SESSION_FILE)
+            self._save_session_to_db()
             print("✅ Muvaffaqiyatli kirildi va sessiya saqlandi!")
             
             self.logged_in = True
@@ -74,6 +107,15 @@ class InstagramHandler:
             print(f"❌ Instagram ga kirishda xatolik: {e}")
             self.logged_in = False
             return False
+    
+    def _save_session_to_db(self):
+        """Save current session to database"""
+        if HAS_DB and db:
+            try:
+                settings = self.client.get_settings()
+                db.save_session(settings)
+            except Exception as e:
+                print(f"⚠️ Session DBga saqlanmadi: {e}")
     
     # ==================== DM Functions ====================
     
@@ -234,8 +276,14 @@ class InstagramHandler:
             return False
     
     def mark_comment_processed(self, comment_id: str):
-        """Mark a comment as processed and save to file"""
+        """Mark a comment as processed and save to database/file"""
         self.processed_comments.add(str(comment_id))
+        
+        # Save to database
+        if HAS_DB and db:
+            db.mark_comment_processed(str(comment_id))
+        
+        # Also save to file as backup
         self._save_processed_comments()
     
     def get_user_info(self, user_id: int) -> str:
