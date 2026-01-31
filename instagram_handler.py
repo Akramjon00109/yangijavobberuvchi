@@ -57,21 +57,38 @@ class InstagramHandler:
     def login(self) -> bool:
         """
         Login to Instagram, using saved session if available
+        Priority: SESSION_DATA env > Database > File > Fresh login
         
         Returns:
             True if login successful, False otherwise
         """
         try:
-            # Try to load session from database first
+            # 1. Try to load session from SESSION_DATA env var (for cloud deployment)
+            session_data_env = os.getenv("SESSION_DATA", "")
+            if session_data_env:
+                print("📱 Session ENV dan yuklanmoqda...", flush=True)
+                try:
+                    import base64
+                    session_json = base64.b64decode(session_data_env).decode('utf-8')
+                    session_dict = json.loads(session_json)
+                    self.client.set_settings(session_dict)
+                    self.client.login(config.INSTAGRAM_USERNAME, config.INSTAGRAM_PASSWORD)
+                    self.logged_in = True
+                    print("✅ Session ENV dan muvaffaqiyatli yuklandi!", flush=True)
+                    return True
+                except Exception as e:
+                    print(f"⚠️ SESSION_DATA yaroqsiz: {e}", flush=True)
+            
+            # 2. Try to load session from database
             if HAS_DB and db:
                 db_session = db.load_session()
                 if db_session:
-                    print("📱 Session databazadan yuklanmoqda...")
+                    print("📱 Session databazadan yuklanmoqda...", flush=True)
                     try:
                         self.client.set_settings(db_session)
                         self.client.login(config.INSTAGRAM_USERNAME, config.INSTAGRAM_PASSWORD)
                         self.logged_in = True
-                        print("✅ Session databazadan muvaffaqiyatli yuklandi!")
+                        print("✅ Session databazadan muvaffaqiyatli yuklandi!", flush=True)
                         return True
                     except Exception as e:
                         print(f"⚠️ DB sessiya yaroqsiz: {e}")
