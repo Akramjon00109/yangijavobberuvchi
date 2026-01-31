@@ -56,9 +56,15 @@ def run_instagram_bot():
 
 
 def run_telegram_bot():
-    """Run the Telegram subscription bot"""
+    """Run the Telegram subscription bot with its own event loop"""
     global bot_status
+    import asyncio
+    
     try:
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         bot_status["telegram"] = "running"
         from telegram_bot import main as telegram_main
         telegram_main()
